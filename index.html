@@ -253,461 +253,447 @@
     <div id="toast-container"></div>
 
     <script>
-        // Constants
-        const MAX_FAVORITES = 5;
-        const LOCAL_STORAGE_KEYS = {
-            FAMILY_MEMBERS: 'familyMembers',
-            CATEGORIES: 'categories'
-        };
+       // Constants
+const MAX_FAVORITES = 5;
+const LOCAL_STORAGE_KEYS = {
+    FAMILY_MEMBERS: 'familyMembers',
+    CATEGORIES: 'categories'
+};
 
-        // State
-        let familyMembers = [];
-        let categories = ['Food', 'Transportation', 'Utilities', 'Entertainment', 'Other'];
-        let currentMember = null;
+// State
+let familyMembers = [];
+let categories = ['Food', 'Transportation', 'Utilities', 'Entertainment', 'Other'];
+let currentMember = null;
 
-        // DOM Elements
-        const familyMemberSelect = document.getElementById('family-member-select');
-        const newMemberNameInput = document.getElementById('new-member-name');
-        const submitNewMemberBtn = document.getElementById('submit-new-member');
-        const editMembersList = document.getElementById('edit-members-list');
-        const categoryList = document.getElementById('category-list');
-        const newCategoryInput = document.getElementById('new-category-input');
-        const addCategoryBtn = document.getElementById('add-category');
-        const totalBudgetSpan = document.getElementById('total-budget');
-        const remainingBalanceSpan = document.getElementById('remaining-balance');
-        const dailyLimitSpan = document.getElementById('daily-limit');
-        const budgetInput = document.getElementById('budget-input');
-        const budgetTimeframeSelect = document.getElementById('budget-timeframe');
-        const setBudgetBtn = document.getElementById('set-budget');
-        const expenseAmountInput = document.getElementById('expense-amount');
-        const expenseCategorySelect = document.getElementById('expense-category');
-        const addExpenseBtn = document.getElementById('add-expense');
-        const generateWeeklyReportBtn = document.getElementById('generate-weekly-report');
-        const generateMonthlyReportBtn = document.getElementById('generate-monthly-report');
-        const reportContainer = document.getElementById('report-container');
-        const expenseList = document.getElementById('expense-list');
-        const debugConsole = document.getElementById('debug-console');
+// DOM Elements
+const familyMemberSelect = document.getElementById('family-member-select');
+const newMemberNameInput = document.getElementById('new-member-name');
+const submitNewMemberBtn = document.getElementById('submit-new-member');
+const editMembersList = document.getElementById('edit-members-list');
+const categoryList = document.getElementById('category-list');
+const newCategoryInput = document.getElementById('new-category-input');
+const addCategoryBtn = document.getElementById('add-category');
+const totalBudgetSpan = document.getElementById('total-budget');
+const remainingBalanceSpan = document.getElementById('remaining-balance');
+const dailyLimitSpan = document.getElementById('daily-limit');
+const budgetInput = document.getElementById('budget-input');
+const budgetTimeframeSelect = document.getElementById('budget-timeframe');
+const setBudgetBtn = document.getElementById('set-budget');
+const expenseAmountInput = document.getElementById('expense-amount');
+const expenseCategorySelect = document.getElementById('expense-category');
+const addExpenseBtn = document.getElementById('add-expense');
+const generateWeeklyReportBtn = document.getElementById('generate-weekly-report');
+const generateMonthlyReportBtn = document.getElementById('generate-monthly-report');
+const reportContainer = document.getElementById('report-container');
+const expenseList = document.getElementById('expense-list');
 
-        // Settings DOM Elements
-        const settingsMembersList = document.getElementById('settings-members-list');
-        const settingsNewMemberNameInput = document.getElementById('settings-new-member-name');
-        const settingsSubmitNewMemberBtn = document.getElementById('settings-submit-new-member');
-        const settingsCategoryList = document.getElementById('settings-category-list');
-        const settingsNewCategoryInput = document.getElementById('settings-new-category-input');
-        const settingsAddCategoryBtn = document.getElementById('settings-add-category');
+// Settings DOM Elements
+const settingsMembersList = document.getElementById('settings-members-list');
+const settingsNewMemberNameInput = document.getElementById('settings-new-member-name');
+const settingsSubmitNewMemberBtn = document.getElementById('settings-submit-new-member');
+const settingsCategoryList = document.getElementById('settings-category-list');
+const settingsNewCategoryInput = document.getElementById('settings-new-category-input');
+const settingsAddCategoryBtn = document.getElementById('settings-add-category');
 
-        // Helper Functions
-        function debug(message) {
-            const debugMessage = `${new Date().toLocaleTimeString()}: ${message}`;
-            debugConsole.innerHTML += `<p>${debugMessage}</p>`;
-            console.log(debugMessage);
-        }
+// Helper Functions
+function showToast(message, duration = 3000) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.getElementById('toast-container').appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 500);
+    }, duration);
+}
 
-        function showToast(message, duration = 3000) {
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.textContent = message;
-            document.getElementById('toast-container').appendChild(toast);
-            setTimeout(() => toast.classList.add('show'), 10);
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 500);
-            }, duration);
-        }
+function formatCurrency(amount) {
+    return `₹${parseFloat(amount).toFixed(2)}`;
+}
 
-        function formatCurrency(amount) {
-            if (typeof amount !== 'number' || isNaN(amount)) {
-                amount = 0;
-            }
-            return `₹${amount.toFixed(2)}`;
-        }
+// Family Member Functions
+function loadFamilyMembers() {
+    const storedMembers = localStorage.getItem(LOCAL_STORAGE_KEYS.FAMILY_MEMBERS);
+    if (storedMembers) {
+        familyMembers = JSON.parse(storedMembers);
+        updateFamilyMemberSelect();
+        updateSettingsFamilyMemberList();
+    }
+}
 
-        // Family Member Functions
-        function loadFamilyMembers() {
-            const storedMembers = localStorage.getItem(LOCAL_STORAGE_KEYS.FAMILY_MEMBERS);
-            if (storedMembers) {
-                familyMembers = JSON.parse(storedMembers);
-                updateFamilyMemberSelect();
-                updateSettingsFamilyMemberList();
-            }
-            debug('Family members loaded from storage');
-        }
+function saveFamilyMembers() {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.FAMILY_MEMBERS, JSON.stringify(familyMembers));
+}
 
-        function saveFamilyMembers() {
-            localStorage.setItem(LOCAL_STORAGE_KEYS.FAMILY_MEMBERS, JSON.stringify(familyMembers));
-            debug('Family members saved to storage');
-        }
+function updateFamilyMemberSelect() {
+    familyMemberSelect.innerHTML = '<option value="">Select a family member</option>';
+    familyMembers.forEach(member => {
+        const option = document.createElement('option');
+        option.value = member.name;
+        option.textContent = member.name;
+        familyMemberSelect.appendChild(option);
+    });
+    updateEditMembersList();
+}
 
-        function updateFamilyMemberSelect() {
-            familyMemberSelect.innerHTML = '<option value="">Select a family member</option>';
-            familyMembers.forEach(member => {
-                const option = document.createElement('option');
-                option.value = member.name;
-                option.textContent = member.name;
-                familyMemberSelect.appendChild(option);
-            });
-            updateEditMembersList();
-        }
+function addNewFamilyMember(name) {
+    if (name && !familyMembers.some(member => member.name === name.trim())) {
+        familyMembers.push({
+            name: name.trim(),
+            budget: 0,
+            budgetTimeframe: 30,
+            expenses: [],
+            favoriteCategories: []
+        });
+        saveFamilyMembers();
+        updateFamilyMemberSelect();
+        updateSettingsFamilyMemberList();
+        showToast(`New family member added: ${name.trim()}`);
+    } else {
+        showToast('Please enter a valid and unique name');
+    }
+}
 
-        function addNewFamilyMember(name) {
-            if (name && !familyMembers.some(member => member.name === name.trim())) {
-                familyMembers.push({
-                    name: name.trim(),
-                    budget: 0,
-                    budgetTimeframe: 30,
-                    expenses: [],
-                    favoriteCategories: [] // Ensure favoriteCategories is initialized
-                });
-                saveFamilyMembers();
-                updateFamilyMemberSelect();
-                updateSettingsFamilyMemberList();
-                showToast(`New family member added: ${name.trim()}`);
-            } else {
-                showToast('Please enter a valid and unique name');
-            }
-        }
+function deleteFamilyMember(name) {
+    familyMembers = familyMembers.filter(member => member.name !== name);
+    saveFamilyMembers();
+    updateFamilyMemberSelect();
+    updateSettingsFamilyMemberList();
+    showToast('Family member deleted');
+}
 
-        function deleteFamilyMember(name) {
-            familyMembers = familyMembers.filter(member => member.name !== name);
-            saveFamilyMembers();
-            updateFamilyMemberSelect();
-            updateSettingsFamilyMemberList();
-            showToast('Family member deleted');
-        }
+function updateEditMembersList() {
+    editMembersList.innerHTML = '';
+    familyMembers.forEach(member => {
+        const div = document.createElement('div');
+        div.className = 'tag';
+        div.textContent = member.name;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-tag';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => deleteFamilyMember(member.name);
+        div.appendChild(removeBtn);
+        editMembersList.appendChild(div);
+    });
+}
 
-        function updateEditMembersList() {
-            editMembersList.innerHTML = '';
-            familyMembers.forEach(member => {
-                const div = document.createElement('div');
-                div.className = 'tag';
-                div.textContent = member.name;
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'remove-tag';
-                removeBtn.textContent = '×';
-                removeBtn.onclick = () => deleteFamilyMember(member.name);
-                div.appendChild(removeBtn);
-                editMembersList.appendChild(div);
-            });
-        }
+function updateSettingsFamilyMemberList() {
+    settingsMembersList.innerHTML = '';
+    familyMembers.forEach(member => {
+        const div = document.createElement('div');
+        div.className = 'tag';
+        div.textContent = member.name;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-tag';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => deleteFamilyMember(member.name);
+        div.appendChild(removeBtn);
+        settingsMembersList.appendChild(div);
+    });
+}
 
-        function updateSettingsFamilyMemberList() {
-            settingsMembersList.innerHTML = '';
-            familyMembers.forEach(member => {
-                const div = document.createElement('div');
-                div.className = 'tag';
-                div.textContent = member.name;
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'remove-tag';
-                removeBtn.textContent = '×';
-                removeBtn.onclick = () => deleteFamilyMember(member.name);
-                div.appendChild(removeBtn);
-                settingsMembersList.appendChild(div);
-            });
-        }
+// Category Functions
+function loadCategories() {
+    const storedCategories = localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES);
+    if (storedCategories) {
+        categories = JSON.parse(storedCategories);
+    }
+    updateCategoryList();
+    updateSettingsCategoryList();
+    updateExpenseCategorySelect();
+}
 
-        // Category Functions
-        function loadCategories() {
-            const storedCategories = localStorage.getItem(LOCAL_STORAGE_KEYS.CATEGORIES);
-            if (storedCategories) {
-                categories = JSON.parse(storedCategories);
-            }
-            updateCategoryList();
-            updateSettingsCategoryList();
-            updateExpenseCategorySelect();
-            debug('Categories loaded from storage');
-        }
+function saveCategories() {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+}
 
-        function saveCategories() {
-            localStorage.setItem(LOCAL_STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-            debug('Categories saved to storage');
-        }
+function updateCategoryList() {
+    categoryList.innerHTML = '';
+    categories.forEach(category => {
+        const div = document.createElement('div');
+        div.className = 'tag';
+        div.textContent = category;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-tag';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => deleteCategory(category);
+        div.appendChild(removeBtn);
+        categoryList.appendChild(div);
+    });
+}
 
-        function updateCategoryList() {
-            categoryList.innerHTML = '';
-            categories.forEach(category => {
-                const div = document.createElement('div');
-                div.className = 'tag';
-                div.textContent = category;
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'remove-tag';
-                removeBtn.textContent = '×';
-                removeBtn.onclick = () => deleteCategory(category);
-                div.appendChild(removeBtn);
-                categoryList.appendChild(div);
-            });
-        }
+function updateSettingsCategoryList() {
+    settingsCategoryList.innerHTML = '';
+    categories.forEach(category => {
+        const div = document.createElement('div');
+        div.className = 'tag';
+        div.textContent = category;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-tag';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => deleteCategory(category);
+        div.appendChild(removeBtn);
+        settingsCategoryList.appendChild(div);
+    });
+}
 
-        function updateSettingsCategoryList() {
-            settingsCategoryList.innerHTML = '';
-            categories.forEach(category => {
-                const div = document.createElement('div');
-                div.className = 'tag';
-                div.textContent = category;
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'remove-tag';
-                removeBtn.textContent = '×';
-                removeBtn.onclick = () => deleteCategory(category);
-                div.appendChild(removeBtn);
-                settingsCategoryList.appendChild(div);
-            });
-        }
+function updateExpenseCategorySelect() {
+    expenseCategorySelect.innerHTML = '<option value="">Select a category</option>';
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        expenseCategorySelect.appendChild(option);
+    });
+}
 
-        function updateExpenseCategorySelect() {
-            expenseCategorySelect.innerHTML = '<option value="">Select a category</option>';
-            categories.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category;
-                option.textContent = category;
-                expenseCategorySelect.appendChild(option);
-            });
-        }
+function addCategory(categoryName) {
+    if (categoryName && !categories.includes(categoryName.trim())) {
+        categories.push(categoryName.trim());
+        saveCategories();
+        updateCategoryList();
+        updateSettingsCategoryList();
+        updateExpenseCategorySelect();
+        showToast(`New category added: ${categoryName.trim()}`);
+    } else {
+        showToast('Please enter a valid and unique category name');
+    }
+}
 
-        function addCategory(categoryName) {
-            if (categoryName && !categories.includes(categoryName.trim())) {
-                categories.push(categoryName.trim());
-                saveCategories();
-                updateCategoryList();
-                updateSettingsCategoryList();
-                updateExpenseCategorySelect();
-                showToast(`New category added: ${categoryName.trim()}`);
-            } else {
-                showToast('Please enter a valid and unique category name');
-            }
-        }
+function deleteCategory(categoryName) {
+    categories = categories.filter(category => category !== categoryName);
+    saveCategories();
+    updateCategoryList();
+    updateSettingsCategoryList();
+    updateExpenseCategorySelect();
+    showToast('Category deleted');
+}
 
-        function deleteCategory(categoryName) {
-            categories = categories.filter(category => category !== categoryName);
-            saveCategories();
-            updateCategoryList();
-            updateSettingsCategoryList();
-            updateExpenseCategorySelect();
-            showToast('Category deleted');
-        }
-
-        // Budget Functions
-        function setBudget() {
-            if (currentMember) {
-                const budgetAmount = parseFloat(budgetInput.value);
-                const timeframe = parseInt(budgetTimeframeSelect.value);
-                if (!isNaN(budgetAmount) && budgetAmount > 0) {
-                    currentMember.budget = budgetAmount;
-                    currentMember.budgetTimeframe = timeframe;
-                    currentMember.expenses = []; // Reset expenses when budget is set
-                    saveFamilyMembers();
-                    updateBudgetInfo();
-                    showToast(`Budget set: ${formatCurrency(budgetAmount)} for ${timeframe} days`);
-                } else {
-                    showToast('Please enter a valid budget amount');
-                }
-            } else {
-                showToast('Please select a family member first');
-            }
-        }
-
-        function updateBudgetInfo() {
-            if (currentMember) {
-                totalBudgetSpan.textContent = formatCurrency(currentMember.budget);
-                const totalExpenses = currentMember.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-                const remainingBalance = currentMember.budget - totalExpenses;
-                remainingBalanceSpan.textContent = formatCurrency(remainingBalance);
-                const dailyLimit = currentMember.budget / currentMember.budgetTimeframe;
-                dailyLimitSpan.textContent = formatCurrency(dailyLimit);
-                updateExpenseList();
-            }
-        }
-
-        // Expense Functions
-        function addExpense() {
-            if (currentMember) {
-                const amount = parseFloat(expenseAmountInput.value);
-                const category = expenseCategorySelect.value;
-                if (!isNaN(amount) && amount > 0 && category) {
-                    currentMember.expenses.push({ amount, category, date: new Date().toISOString() });
-                    saveFamilyMembers();
-                    updateBudgetInfo();
-                    expenseAmountInput.value = '';
-                    expenseCategorySelect.value = '';
-                    showToast(`Expense added: ${formatCurrency(amount)} for ${category}`);
-                    checkBudgetStatus();
-                } else {
-                    showToast('Please enter a valid amount and select a category');
-                }
-            } else {
-                showToast('Please select a family member first');
-            }
-        }
-
-        function editExpense(index) {
-            const expense = currentMember.expenses[index];
-            const newAmount = prompt('Enter new amount:', expense.amount);
-            const newCategory = prompt('Enter new category:', expense.category);
-            if (newAmount && !isNaN(parseFloat(newAmount)) && newCategory) {
-                expense.amount = parseFloat(newAmount);
-                expense.category = newCategory;
-                saveFamilyMembers();
-                updateBudgetInfo();
-                showToast('Expense updated');
-            } else {
-                showToast('Invalid input');
-            }
-        }
-
-        function deleteExpense(index) {
-            currentMember.expenses.splice(index, 1);
+// Budget Functions
+function setBudget() {
+    if (currentMember) {
+        const budgetAmount = parseFloat(budgetInput.value);
+        const timeframe = parseInt(budgetTimeframeSelect.value);
+        if (!isNaN(budgetAmount) && budgetAmount > 0) {
+            currentMember.budget = budgetAmount;
+            currentMember.budgetTimeframe = timeframe;
             saveFamilyMembers();
             updateBudgetInfo();
-            showToast('Expense deleted');
+            showToast(`Budget set: ${formatCurrency(budgetAmount)} for ${timeframe} days`);
+        } else {
+            showToast('Please enter a valid budget amount');
         }
+    } else {
+        showToast('Please select a family member first');
+    }
+}
 
-        function updateExpenseList() {
-            expenseList.innerHTML = '';
-            currentMember.expenses.forEach((expense, index) => {
-                const div = document.createElement('div');
-                div.className = 'expense-item';
-                div.innerHTML = `
-                    <span>${formatCurrency(expense.amount)} - ${expense.category}</span>
-                    <div>
-                        <button onclick="editExpense(${index})">Edit</button>
-                        <button onclick="deleteExpense(${index})">Delete</button>
-                    </div>
-                `;
-                expenseList.appendChild(div);
-            });
+function updateBudgetInfo() {
+    if (currentMember) {
+        totalBudgetSpan.textContent = formatCurrency(currentMember.budget);
+        const totalExpenses = currentMember.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+        const remainingBalance = currentMember.budget - totalExpenses;
+        remainingBalanceSpan.textContent = formatCurrency(remainingBalance);
+        const dailyLimit = currentMember.budget / currentMember.budgetTimeframe;
+        dailyLimitSpan.textContent = formatCurrency(dailyLimit);
+        updateExpenseList();
+    }
+}
+
+// Expense Functions
+function addExpense() {
+    if (currentMember) {
+        const amount = parseFloat(expenseAmountInput.value);
+        const category = expenseCategorySelect.value;
+        if (!isNaN(amount) && amount > 0 && category) {
+            currentMember.expenses.push({ amount, category, date: new Date().toISOString() });
+            saveFamilyMembers();
+            updateBudgetInfo();
+            expenseAmountInput.value = '';
+            expenseCategorySelect.value = '';
+            showToast(`Expense added: ${formatCurrency(amount)} for ${category}`);
+            checkBudgetStatus();
+        } else {
+            showToast('Please enter a valid amount and select a category');
         }
+    } else {
+        showToast('Please select a family member first');
+    }
+}
 
-        function checkBudgetStatus() {
-            if (currentMember) {
-                const totalExpenses = currentMember.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-                const remainingBalance = currentMember.budget - totalExpenses;
-                const dailyLimit = currentMember.budget / currentMember.budgetTimeframe;
-                const daysRemaining = Math.ceil(remainingBalance / dailyLimit);
+function editExpense(index) {
+    const expense = currentMember.expenses[index];
+    const newAmount = prompt('Enter new amount:', expense.amount);
+    const newCategory = prompt('Enter new category:', expense.category);
+    if (newAmount && !isNaN(parseFloat(newAmount)) && newCategory) {
+        expense.amount = parseFloat(newAmount);
+        expense.category = newCategory;
+        saveFamilyMembers();
+        updateBudgetInfo();
+        showToast('Expense updated');
+    } else {
+        showToast('Invalid input');
+    }
+}
 
-                if (daysRemaining <= 3 && daysRemaining > 0) {
-                    showToast(`Warning: Only ${daysRemaining} days of budget remaining!`, 5000);
-                } else if (remainingBalance <= 0) {
-                    showToast('Alert: Budget exceeded!', 5000);
-                }
-            }
+function deleteExpense(index) {
+    currentMember.expenses.splice(index, 1);
+    saveFamilyMembers();
+    updateBudgetInfo();
+    showToast('Expense deleted');
+}
+
+function updateExpenseList() {
+    expenseList.innerHTML = '';
+    if (currentMember) {
+        currentMember.expenses.forEach((expense, index) => {
+            const div = document.createElement('div');
+            div.className = 'expense-item';
+            div.innerHTML = `
+                <span>${formatCurrency(expense.amount)} - ${expense.category}</span>
+                <div>
+                    <button onclick="editExpense(${index})">Edit</button>
+                    <button onclick="deleteExpense(${index})">Delete</button>
+                </div>
+            `;
+            expenseList.appendChild(div);
+        });
+    }
+}
+
+function checkBudgetStatus() {
+    if (currentMember) {
+        const totalExpenses = currentMember.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+        const remainingBalance = currentMember.budget - totalExpenses;
+        const dailyLimit = currentMember.budget / currentMember.budgetTimeframe;
+        const daysRemaining = Math.ceil(remainingBalance / dailyLimit);
+
+        if (daysRemaining <= 3 && daysRemaining > 0) {
+            showToast(`Warning: Only ${daysRemaining} days of budget remaining!`, 5000);
+        } else if (remainingBalance <= 0) {
+            showToast('Alert: Budget exceeded!', 5000);
         }
+    }
+}
 
-        // Reporting Functions
-        function generateWeeklyReport() {
-            if (currentMember) {
-                const oneWeekAgo = new Date();
-                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                const weeklyExpenses = currentMember.expenses.filter(expense => new Date(expense.date) >= oneWeekAgo);
-                const totalSpent = weeklyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-                const categoryTotals = weeklyExpenses.reduce((totals, expense) => {
-                    totals[expense.category] = (totals[expense.category] || 0) + expense.amount;
-                    return totals;
-                }, {});
+// Reporting Functions
+function generateWeeklyReport() {
+    if (currentMember) {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const weeklyExpenses = currentMember.expenses.filter(expense => new Date(expense.date) >= oneWeekAgo);
+        const totalSpent = weeklyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+        const categoryTotals = weeklyExpenses.reduce((totals, expense) => {
+            totals[expense.category] = (totals[expense.category] || 0) + expense.amount;
+            return totals;
+        }, {});
 
-                let report = `<h3>Weekly Report for ${currentMember.name}</h3>
-                              <p>Total Spent: ${formatCurrency(totalSpent)}</p>
-                              <h4>Category Breakdown:</h4>
-                              <ul>`;
-                for (const [category, amount] of Object.entries(categoryTotals)) {
-                    report += `<li>${category}: ${formatCurrency(amount)}</li>`;
-                }
-                report += '</ul>';
-
-                reportContainer.innerHTML = report;
-                showToast('Weekly report generated');
-            } else {
-                showToast('Please select a family member first');
-            }
+        let report = `<h3>Weekly Report for ${currentMember.name}</h3>
+                      <p>Total Spent: ${formatCurrency(totalSpent)}</p>
+                      <h4>Category Breakdown:</h4>
+                      <ul>`;
+        for (const [category, amount] of Object.entries(categoryTotals)) {
+            report += `<li>${category}: ${formatCurrency(amount)}</li>`;
         }
+        report += '</ul>';
 
-        function generateMonthlyReport() {
-            if (currentMember) {
-                const oneMonthAgo = new Date();
-                oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-                const monthlyExpenses = currentMember.expenses.filter(expense => new Date(expense.date) >= oneMonthAgo);
-                const totalSpent = monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-                const categoryTotals = monthlyExpenses.reduce((totals, expense) => {
-                    totals[expense.category] = (totals[expense.category] || 0) + expense.amount;
-                    return totals;
-                }, {});
+        reportContainer.innerHTML = report;
+        showToast('Weekly report generated');
+    } else {
+        showToast('Please select a family member first');
+    }
+}
 
-                let report = `<h3>Monthly Report for ${currentMember.name}</h3>
-                              <p>Total Spent: ${formatCurrency(totalSpent)}</p>
-                              <h4>Category Breakdown:</h4>
-                              <ul>`;
-                for (const [category, amount] of Object.entries(categoryTotals)) {
-                    report += `<li>${category}: ${formatCurrency(amount)}</li>`;
-                }
-                report += '</ul>';
+function generateMonthlyReport() {
+    if (currentMember) {
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        const monthlyExpenses = currentMember.expenses.filter(expense => new Date(expense.date) >= oneMonthAgo);
+        const totalSpent = monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+        const categoryTotals = monthlyExpenses.reduce((totals, expense) => {
+            totals[expense.category] = (totals[expense.category] || 0) + expense.amount;
+            return totals;
+        }, {});
 
-                reportContainer.innerHTML = report;
-                showToast('Monthly report generated');
-            } else {
-                showToast('Please select a family member first');
-            }
+        let report = `<h3>Monthly Report for ${currentMember.name}</h3>
+                      <p>Total Spent: ${formatCurrency(totalSpent)}</p>
+                      <h4>Category Breakdown:</h4>
+                      <ul>`;
+        for (const [category, amount] of Object.entries(categoryTotals)) {
+            report += `<li>${category}: ${formatCurrency(amount)}</li>`;
         }
+        report += '</ul>';
 
-        // Event Listeners
-        familyMemberSelect.addEventListener('change', (e) => {
-            const selectedName = e.target.value;
-            currentMember = familyMembers.find(member => member.name === selectedName);
-            if (currentMember) {
-                updateBudgetInfo();
-                showToast(`Selected family member: ${currentMember.name}`);
-            }
-        });
+        reportContainer.innerHTML = report;
+        showToast('Monthly report generated');
+    } else {
+        showToast('Please select a family member first');
+    }
+}
 
-        submitNewMemberBtn.addEventListener('click', () => {
-            addNewFamilyMember(newMemberNameInput.value.trim());
-            newMemberNameInput.value = '';
-        });
+// Event Listeners
+familyMemberSelect.addEventListener('change', (e) => {
+    const selectedName = e.target.value;
+    currentMember = familyMembers.find(member => member.name === selectedName);
+    if (currentMember) {
+        updateBudgetInfo();
+        showToast(`Selected family member: ${currentMember.name}`);
+    }
+});
 
-        addCategoryBtn.addEventListener('click', () => {
-            addCategory(newCategoryInput.value.trim());
-            newCategoryInput.value = '';
-        });
+submitNewMemberBtn.addEventListener('click', () => {
+    addNewFamilyMember(newMemberNameInput.value);
+    newMemberNameInput.value = '';
+});
 
-        setBudgetBtn.addEventListener('click', setBudget);
-        addExpenseBtn.addEventListener('click', addExpense);
-        generateWeeklyReportBtn.addEventListener('click', generateWeeklyReport);
-        generateMonthlyReportBtn.addEventListener('click', generateMonthlyReport);
+addCategoryBtn.addEventListener('click', () => {
+    addCategory(newCategoryInput.value);
+    newCategoryInput.value = '';
+});
 
-        settingsSubmitNewMemberBtn.addEventListener('click', () => {
-            addNewFamilyMember(settingsNewMemberNameInput.value.trim());
-            settingsNewMemberNameInput.value = '';
-        });
+setBudgetBtn.addEventListener('click', setBudget);
+addExpenseBtn.addEventListener('click', addExpense);
+generateWeeklyReportBtn.addEventListener('click', generateWeeklyReport);
+generateMonthlyReportBtn.addEventListener('click', generateMonthlyReport);
 
-        settingsAddCategoryBtn.addEventListener('click', () => {
-            addCategory(settingsNewCategoryInput.value.trim());
-            settingsNewCategoryInput.value = '';
-        });
+settingsSubmitNewMemberBtn.addEventListener('click', () => {
+    addNewFamilyMember(settingsNewMemberNameInput.value);
+    settingsNewMemberNameInput.value = '';
+});
 
-        // Initialize application
-        function initializeApp() {
-            loadFamilyMembers();
-            loadCategories();
-            debug('Application initialized');
-            showToast('Application initialized');
+settingsAddCategoryBtn.addEventListener('click', () => {
+    addCategory(settingsNewCategoryInput.value);
+    settingsNewCategoryInput.value = '';
+});
+
+// Initialize application
+function initializeApp() {
+    loadFamilyMembers();
+    loadCategories();
+    showToast('Application initialized');
+}
+
+// Call initializeApp when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', initializeApp);
+
+// Expose functions for editing/deleting expenses globally
+window.editExpense = editExpense;
+window.deleteExpense = deleteExpense;
+
+// Collapsible content handling
+const collapsibles = document.querySelectorAll(".collapsible");
+collapsibles.forEach(collapsible => {
+    collapsible.addEventListener("click", function() {
+        this.classList.toggle("active");
+        const content = this.nextElementSibling;
+        if (content.style.display === "block") {
+            content.style.display = "none";
+        } else {
+            content.style.display = "block";
         }
-
-        // Call initializeApp when the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', initializeApp);
-
-        // Expose functions for editing/deleting expenses globally
-        window.editExpense = editExpense;
-        window.deleteExpense = deleteExpense;
-
-        // Collapsible content handling
-        const collapsibles = document.querySelectorAll(".collapsible");
-        collapsibles.forEach(collapsible => {
-            collapsible.addEventListener("click", function () {
-                this.classList.toggle("active");
-                const content = this.nextElementSibling;
-                if (content.style.display === "block") {
-                    content.style.display = "none";
-                } else {
-                    content.style.display = "block";
-                }
-            });
-        });
+    });
+});
     </script>
 </body>
 </html>
